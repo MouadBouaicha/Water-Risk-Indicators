@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Carte des Indices Hydrologiques - France</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Water Risk Indicators</h1>
+        
+        <!-- Controls Section -->
+        <div class="controls">
+            <div class="control-row">
+                <!-- Country Selector -->
+                <select id="country-selector" class="country-selector">
+                    <option value="fra">France</option>
+                    <option value="deu">Germany</option>
+                    <option value="esp">Spain</option>
+                    <option value="mar">Morocco</option>
+                </select>
+
+                <!-- Data Type Selector -->
+                <select id="data-type-selector" class="data-type-selector">
+                    <option value="annual">Annual Data</option>
+                    <option value="monthly">Monthly Data</option>
+                    <option value="future">Future Projections</option>
+                </select>
+
+                <!-- Indicator Selector -->
+                <select id="index-selector" class="index-selector">
+                    <!-- Annual Indicators -->
+                    <optgroup label="Annual Indicators" class="annual-options">
+                        <option value="bws">Water Stress (BWS)</option>
+                        <option value="bwd">Water Depletion (BWD)</option>
+                        <option value="iav">Interannual Variability (IAV)</option>
+                        <option value="sev">Seasonal Variability (SEV)</option>
+                        <option value="gtd">Groundwater Table Decline (GTD)</option>
+                        <option value="rfr">Riverine Flood Risk (RFR)</option>
+                        <option value="drr">Drought Risk (DRR)</option>
+                        <option value="ucw">Untreated Connected Wastewater (UCW)</option>
+                        <option value="cep">Coastal Eutrophication Potential (CEP)</option>
+                        <option value="rri">RepRisk Index (RRI)</option>
+                    </optgroup>
+                
+                    <!-- Monthly Indicators -->
+                    <optgroup label="Monthly Indicators" class="monthly-options" style="display: none;">
+                        <option value="bws">Water Stress (BWS)</option>
+                        <option value="bwd">Water Depletion (BWD)</option>
+                        <option value="iav">Interannual Variability (IAV)</option>
+                    </optgroup>
+                
+                    <!-- Future Indicators -->
+                    <optgroup label="Future Indicators" class="future-options" style="display: none;">
+                        <option value="ws">Water Stress</option>
+                        <option value="wd">Water Depletion</option>
+                        <option value="iv">Interannual Variability</option>
+                    </optgroup>
+                </select>
+
+                <!-- Monthly Controls -->
+                <div class="slider-container" style="display: none;">
+                    <label for="month-slider">Month:</label>
+                    <input type="range" id="month-slider" min="1" max="12" value="1" step="1">
+                    <span id="month-display">January</span>
+                </div>
+
+                <!-- Future Scenario Controls -->
+                <div class="future-controls" style="display: none;">
+                    <select id="scenario-selector" class="scenario-selector">
+                        <option value="bau">Business as Usual</option>
+                        <option value="opt">Optimistic</option>
+                        <option value="pes">Pessimistic</option>
+                    </select>
+                    <select id="year-selector" class="year-selector">
+                        <option value="30">2030</option>
+                        <option value="50">2050</option>
+                        <option value="80">2080</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Indicator Description -->
+            <div id="index-info" class="index-info">
+                Description of the selected indicator...
+            </div>
+        </div>
+
+        <!-- Visualization Grid -->
+        <div class="grid-container">
+            <!-- Map Section -->
+            <div class="grid-item map-section">
+                <div class="map-wrapper">
+                    <div id="map">
+                        <div class="zoom-controls">
+                            <button id="zoom-in">+</button>
+                            <button id="zoom-out">-</button>
+                        </div>
+                        <button class="reset-zoom" id="reset-zoom">Reset</button>
+                    </div>
+                    <div class="legend" id="legend"></div>
+                </div>
+            </div>
+
+            <!-- Chart Section -->
+            <div class="grid-item chart-section">
+                <div id="basin-chart"></div>
+            </div>
+
+            <!-- Network Graph Section -->
+            <div class="grid-item network-section" style="grid-column: 1 / -1;">
+                <h2>Upstream-Downstream Basin Relationships</h2>
+                <div id="network-graph"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+    <script src="map.js"></script>
+</body>
+</html>
