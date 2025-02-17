@@ -55,37 +55,59 @@ const chartMargin = { top: 30, right: 20, bottom: 40, left: 40 };
             name: "Water Depletion (BWD)",
             description: "Measures the ratio of water consumption to available renewable water supplies.",
             getColumn: (dataType, period) => {
-                return 'bwd_raw';
-            },
-            getCategoryColumn: (dataType, period) => {
-                return 'bwd_cat';
-            },
-            getLabelColumn: (dataType, period) => {
-                return 'bwd_label';
+                if (dataType === 'future') return `${period.scenario}${period.year}_wd_x_r`;
+                return dataType === 'monthly' ? `bwd_${String(period).padStart(2, '0')}_raw` : 'bwd_raw';
             },
             colorScale: d3.scaleThreshold()
                 .domain([0.05, 0.15, 0.3, 0.5])
                 .range(['#feebe2', '#fbb4b9', '#f768a1', '#c51b8a', '#7a0177'])
         },
-    iav: {
-        name: "Interannual Variability (IAV)",
-        description: "Measures variations in water supply between years.",
-        getColumn: (dataType, period) => {
-            if (dataType === 'future') return `${period.scenario}${period.year}_iv_x_r`;
-            return 'iav_raw';
+        iav: {
+            name: "Interannual Variability (IAV)",
+            description: "Measures variations in water supply between years.",
+            getColumn: (dataType, period) => {
+                if (dataType === 'future') return `${period.scenario}${period.year}_iv_x_r`;
+                return dataType === 'monthly' ? `iav_${String(period).padStart(2, '0')}_raw` : 'iav_raw';
+            },
+            colorScale: d3.scaleThreshold()
+                .domain([0.25, 0.5, 0.75, 1.0])
+                .range(['#edf8fb', '#b3cde3', '#8c96c6', '#88419d', '#4d004b'])
         },
-        getCategoryColumn: (dataType, period) => {
-            if (dataType === 'future') return `${period.scenario}${period.year}_iv_x_c`;
-            return 'iav_cat';
-        },
-        getLabelColumn: (dataType, period) => {
-            if (dataType === 'future') return `${period.scenario}${period.year}_iv_x_l`;
-            return 'iav_label';
-        },
+
+         // For future projections
+    ws: {
+        name: "Future Water Stress",
+        description: "Projected water stress levels under different scenarios.",
+        getColumn: (dataType, period) => `${period.scenario}${period.year}_ws_x_r`,
+        getCategoryColumn: (dataType, period) => `${period.scenario}${period.year}_ws_x_c`,
+        getLabelColumn: (dataType, period) => `${period.scenario}${period.year}_ws_x_l`,
+        colorScale: d3.scaleThreshold()
+            .domain([0.1, 0.2, 0.4, 0.8])
+            .range(['#ffffcc', '#a1dab4', '#41b6c4', '#2c7fb8', '#253494'])
+    },
+
+    wd: {
+        name: "Future Water Depletion",
+        description: "Projected water depletion under different scenarios.",
+        getColumn: (dataType, period) => `${period.scenario}${period.year}_wd_x_r`,
+        getCategoryColumn: (dataType, period) => `${period.scenario}${period.year}_wd_x_c`,
+        getLabelColumn: (dataType, period) => `${period.scenario}${period.year}_wd_x_l`,
+        colorScale: d3.scaleThreshold()
+            .domain([0.05, 0.15, 0.3, 0.5])
+            .range(['#feebe2', '#fbb4b9', '#f768a1', '#c51b8a', '#7a0177'])
+    },
+
+    iv: {
+        name: "Future Interannual Variability",
+        description: "Projected interannual variability under different scenarios.",
+        getColumn: (dataType, period) => `${period.scenario}${period.year}_iv_x_r`,
+        getCategoryColumn: (dataType, period) => `${period.scenario}${period.year}_iv_x_c`,
+        getLabelColumn: (dataType, period) => `${period.scenario}${period.year}_iv_x_l`,
         colorScale: d3.scaleThreshold()
             .domain([0.25, 0.5, 0.75, 1.0])
             .range(['#edf8fb', '#b3cde3', '#8c96c6', '#88419d', '#4d004b'])
     },
+
 
     sev: {
         name: "Seasonal Variability (SEV)",
@@ -577,46 +599,57 @@ indexSelector.addEventListener("change", function() {
 
 
 // Fonction pour mettre à jour la légende
-function updateLegend(indexConfig) {
+function updateLegend(indexKey) {
+    const indexConfig = indices[indexKey];
+    
+    // Clear existing legend
     d3.select("#legend").selectAll("*").remove();
     
     const legendWidth = 400;
     const legendHeight = 60;
-    const legendMargin = { top: 10, right: 20, bottom: 25, left: 20 };
+    const margin = { top: 10, right: 20, bottom: 25, left: 20 };
 
     const legend = d3.select("#legend")
         .append("svg")
         .attr("width", legendWidth)
         .attr("height", legendHeight);
 
+    // Create scale for legend
     const legendScale = d3.scaleLinear()
-        .domain(indexConfig.colorScale.domain())
-        .range([0, legendWidth - legendMargin.left - legendMargin.right]);
+        .domain([0, d3.max(indexConfig.colorScale.domain())])
+        .range([0, legendWidth - margin.left - margin.right]);
 
-    const numBoxes = indexConfig.colorScale.range().length;
-    const boxWidth = (legendWidth - legendMargin.left - legendMargin.right) / numBoxes;
-
-    // Ajouter les rectangles de couleur
+    // Add color rectangles
+    const boxWidth = (legendWidth - margin.left - margin.right) / indexConfig.colorScale.range().length;
+    
     indexConfig.colorScale.range().forEach((color, i) => {
         legend.append("rect")
-            .attr("x", legendMargin.left + (i * boxWidth))
-            .attr("y", legendMargin.top)
+            .attr("x", margin.left + (i * boxWidth))
+            .attr("y", margin.top)
             .attr("width", boxWidth)
             .attr("height", 20)
             .style("fill", color);
     });
 
-    // Ajouter l'axe
+    // Add axis
     const axis = d3.axisBottom(legendScale)
-        .tickValues([0, ...indexConfig.colorScale.domain(), 5.0])
-        .tickFormat(d => d.toFixed(1));
+        .tickValues([0, ...indexConfig.colorScale.domain()])
+        .tickFormat(d => d.toFixed(2));
 
     legend.append("g")
-        .attr("transform", `translate(${legendMargin.left},${legendMargin.top + 20})`)
+        .attr("transform", `translate(${margin.left},${margin.top + 20})`)
         .call(axis)
         .selectAll("text")
         .style("text-anchor", "middle")
         .style("font-size", "12px");
+
+    // Add title
+    legend.append("text")
+        .attr("x", legendWidth / 2)
+        .attr("y", legendHeight - 5)
+        .attr("text-anchor", "middle")
+        .style("font-size", "12px")
+        .text(indexConfig.name);
 }
 
 function updateMap(month, indexKey) {
@@ -670,6 +703,8 @@ function updateMap(month, indexKey) {
         });
 
     updateBasinStyles();
+    updateLegend(indexKey);
+
 }
 // Fonction pour ajouter les interactions à la carte
 function addMapInteractions(paths, valueColumn, categoryColumn, labelColumn, indexKey) {
