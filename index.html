@@ -10,9 +10,18 @@
         <h1>Water Risk Indicators</h1>
         
         <!-- Controls Section -->
-        <div class="controls">
-            <div class="control-row">
-                <!-- Country Selector -->
+        <!-- Controls Section -->
+<div class="controls">
+    <div class="control-row">
+        <!-- Country Selector -->
+        <select id="country-selector" class="country-selector">
+            <option value="fra">France</option>
+            <option value="deu">Germany</option>
+            <option value="esp">Spain</option>
+            <option value="mar">Morocco</option>
+        </select>
+
+        <!-- Data Type Selector -->
                 
 
                 <!-- Data Type Selector -->
@@ -24,20 +33,6 @@
 
                 <!-- Indicator Selector -->
                 <select id="index-selector" class="index-selector">
-                    <!-- Annual Indicators -->
-                    <optgroup label="Annual Indicators" class="annual-options">
-                        <option value="bws">Water Stress (BWS)</option>
-                        <option value="bwd">Water Depletion (BWD)</option>
-                        <option value="iav">Interannual Variability (IAV)</option>
-                        <option value="sev">Seasonal Variability (SEV)</option>
-                        <option value="gtd">Groundwater Table Decline (GTD)</option>
-                        <option value="rfr">Riverine Flood Risk (RFR)</option>
-                        <option value="drr">Drought Risk (DRR)</option>
-                        <option value="ucw">Untreated Connected Wastewater (UCW)</option>
-                        <option value="cep">Coastal Eutrophication Potential (CEP)</option>
-                        <option value="rri">RepRisk Index (RRI)</option>
-                    </optgroup>
-                
                     <!-- Monthly Indicators -->
                     <optgroup label="Monthly Indicators" class="monthly-options" style="display: none;">
                         <option value="bws">Water Stress (BWS)</option>

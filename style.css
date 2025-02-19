@@ -1,3 +1,15 @@
+:root {
+    --primary-color: #2c7fb8;
+    --background-color: #f5f7fa;
+    --card-background: #ffffff;
+}
+
+body {
+    background-color: var(--background-color);
+    font-family: 'Inter', sans-serif;
+}
+
+
 /* Add these CSS styles */
 .grid-container {
     display: grid;
@@ -90,6 +102,13 @@ select:focus {
 optgroup {
     font-weight: bold;
     color: #666;
+}
+
+
+.radar-container {
+    position: relative;
+    width: 100%;
+    height: 100%;
 }
 
 
@@ -280,9 +299,18 @@ option {
     overflow: hidden; /* Ajouter cette ligne */
 }
 
-#basin-chart {
-    width: 100%;
-    height: 100%;
+.radar-path {
+    pointer-events: none;
+}
+
+.grid-circle {
+    fill: none;
+    stroke: #ddd;
+}
+
+#basin-chart svg {
+    display: block;
+    margin: 0 auto;
 }
 
 #map svg {
@@ -300,9 +328,9 @@ option {
     overflow: hidden;  /* Ensure content stays within bounds */
 }
 .container {
-    max-width: 1200px;  /* Réduit de 1600px */
-    margin: 0 auto;
-    padding: 15px;
+    max-width: 1400px;
+    margin: 2rem auto;
+    padding: 0 2rem;
 }
 
 
