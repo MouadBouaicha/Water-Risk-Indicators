@@ -2,61 +2,74 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>Carte des Indices Hydrologiques - France</title>
+    <title>Water Risk Indicators Dashboard</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
+    <div class="header">
+        <div class="header-content">
+            <h1>Water Risk Indicators Dashboard</h1>
+            <p class="subtitle">Interactive visualization of hydrological basins and water risk metrics</p>
+        </div>
+        <button id="toggle-info" class="info-toggle-button">
+            <span class="button-icon">ℹ️</span>
+            Learn More
+        </button>
+    </div>
+
     <div class="container">
-        <h1>Water Risk Indicators</h1>
-        
-        <!-- Controls Section -->
-        <!-- Controls Section -->
-<div class="controls">
-    <div class="control-row">
-        <!-- Country Selector -->
-        <select id="country-selector" class="country-selector">
-            <option value="fra">France</option>
-            <option value="deu">Germany</option>
-            <option value="esp">Spain</option>
-            <option value="mar">Morocco</option>
-        </select>
+        <div class="controls">
+            <div class="control-row">
+                <div class="control-group">
+                    <label for="country-selector">Select Country:</label>
+                    <select id="country-selector" class="country-selector">
+                        <option value="fra">France</option>
+                        <option value="deu">Germany</option>
+                        <option value="esp">Spain</option>
+                        <option value="mar">Morocco</option>
+                    </select>
+                </div>
 
-        <!-- Data Type Selector -->
-                
+                <div class="control-group">
+                    <label for="data-type-selector">Data Type:</label>
+                    <select id="data-type-selector" class="data-type-selector">
+                        <option value="annual">Annual Data</option>
+                        <option value="monthly">Monthly Data</option>
+                        <option value="future">Future Projections</option>
+                    </select>
+                </div>
 
-                <!-- Data Type Selector -->
-                <select id="data-type-selector" class="data-type-selector">
-                    <option value="annual">Annual Data</option>
-                    <option value="monthly">Monthly Data</option>
-                    <option value="future">Future Projections</option>
-                </select>
+                <div class="button-group">
+                    <button id="select-all-basins" class="control-button primary">
+                        Select All Basins
+                    </button>
+                    <button id="unselect-all-basins" class="control-button secondary">
+                        Clear Selection
+                    </button>
+                </div>
+            </div>
 
-                <!-- Indicator Selector -->
+            <div class="control-row secondary-controls">
                 <select id="index-selector" class="index-selector">
-                    <!-- Monthly Indicators -->
-                    <optgroup label="Monthly Indicators" class="monthly-options" style="display: none;">
+                    <optgroup label="Monthly Indicators" class="monthly-options">
                         <option value="bws">Water Stress (BWS)</option>
                         <option value="bwd">Water Depletion (BWD)</option>
                         <option value="iav">Interannual Variability (IAV)</option>
                     </optgroup>
-                
-                    <!-- Future Indicators -->
-                    <optgroup label="Future Indicators" class="future-options" style="display: none;">
+                    <optgroup label="Future Indicators" class="future-options">
                         <option value="ws">Water Stress</option>
                         <option value="wd">Water Depletion</option>
                         <option value="iv">Interannual Variability</option>
                     </optgroup>
                 </select>
 
-                <!-- Monthly Controls -->
-                <div class="slider-container" style="display: none;">
+                <div class="slider-container">
                     <label for="month-slider">Month:</label>
                     <input type="range" id="month-slider" min="1" max="12" value="1" step="1">
                     <span id="month-display">January</span>
                 </div>
 
-                <!-- Future Scenario Controls -->
-                <div class="future-controls" style="display: none;">
+                <div class="future-controls">
                     <select id="scenario-selector" class="scenario-selector">
                         <option value="bau">Business as Usual</option>
                         <option value="opt">Optimistic</option>
@@ -70,15 +83,10 @@
                 </div>
             </div>
 
-            <!-- Indicator Description -->
-            <div id="index-info" class="index-info">
-                Description of the selected indicator...
-            </div>
+            <div id="index-info" class="index-info"></div>
         </div>
 
-        <!-- Visualization Grid -->
         <div class="grid-container">
-            <!-- Map Section -->
             <div class="grid-item map-section">
                 <div class="map-wrapper">
                     <div id="map">
@@ -86,26 +94,91 @@
                             <button id="zoom-in">+</button>
                             <button id="zoom-out">-</button>
                         </div>
-                        <button class="reset-zoom" id="reset-zoom">Reset</button>
+                        <button class="reset-zoom" id="reset-zoom">Reset View</button>
                     </div>
                     <div class="legend" id="legend"></div>
                 </div>
             </div>
 
-            <!-- Chart Section -->
             <div class="grid-item chart-section">
                 <div id="basin-chart"></div>
             </div>
 
-            <!-- Network Graph Section -->
-            <div class="grid-item network-section" style="grid-column: 1 / -1;">
-                <h2>Upstream-Downstream Basin Relationships</h2>
+            <div class="grid-item stacked-section">
+                <h3>Distribution of Values</h3>
+                <div id="stacked-chart"></div>
+            </div>
+
+            <div class="grid-item network-section">
+                <h3>Basin Network Relations</h3>
                 <div id="network-graph"></div>
             </div>
         </div>
     </div>
 
-    <!-- Scripts -->
+    <div id="info-sidebar" class="sidebar">
+        <div class="sidebar-header">
+            <h2>Water Risk Dashboard Guide</h2>
+            <button id="close-sidebar" class="close-button">×</button>
+        </div>
+        <div class="sidebar-content">
+            <section class="info-section">
+                <h3>About This Dashboard</h3>
+                <p>This interactive dashboard visualizes water risk indicators across different hydrological basins. The data was generated using Python and GIS processing tools, analyzing various water-related metrics at different temporal scales.</p>
+            </section>
+
+            <section class="info-section">
+                <h3>Data Processing Methodology</h3>
+                <p>The data was processed using:</p>
+                <ul>
+                    <li>GeoPandas for spatial data handling</li>
+                    <li>Custom Python scripts for basin delineation</li>
+                    <li>Hydrobasins dataset integration</li>
+                    <li>Automated data cleaning and validation</li>
+                </ul>
+                <p>Each basin is assigned a unique identifier starting with "B_" followed by the last 4 digits of its PFAF_ID and the first 3 letters of its region name.</p>
+            </section>
+
+            <section class="info-section">
+                <h3>Understanding Water Risk Indicators</h3>
+                <div class="indicator-list">
+                    <div class="indicator-item">
+                        <h4>Water Stress (BWS)</h4>
+                        <p>Measures the ratio of total water withdrawals to available renewable water supplies.</p>
+                    </div>
+                    <div class="indicator-item">
+                        <h4>Water Depletion (BWD)</h4>
+                        <p>Indicates the ratio of water consumption to available renewable water supplies.</p>
+                    </div>
+                    <div class="indicator-item">
+                        <h4>Interannual Variability (IAV)</h4>
+                        <p>Shows the variation in water supply between years.</p>
+                    </div>
+                </div>
+            </section>
+
+            <section class="info-section">
+                <h3>Using the Dashboard</h3>
+                <ol>
+                    <li>Select a country to view its hydrological basins</li>
+                    <li>Choose between annual, monthly, or future projection data</li>
+                    <li>Click on basins to select them and view detailed information</li>
+                    <li>Use the time slider for monthly data or scenario selectors for future projections</li>
+                </ol>
+            </section>
+
+            <section class="info-section">
+                <h3>Visualization Features</h3>
+                <ul>
+                    <li>Interactive map with zoom and pan controls</li>
+                    <li>Time series charts for selected basins</li>
+                    <li>Network graph showing basin connections</li>
+                    <li>Stacked area chart for distribution analysis</li>
+                </ul>
+            </section>
+        </div>
+    </div>
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
     <script src="map.js"></script>
 </body>

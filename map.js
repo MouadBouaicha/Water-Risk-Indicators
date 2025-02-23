@@ -241,10 +241,14 @@ document.addEventListener('DOMContentLoaded', () => {
     projection = mapElements.projection;
     path = mapElements.path;
     zoom = mapElements.zoom;
+    const sliderContainer = document.querySelector('.slider-container');
+    const futureControls = document.querySelector('.future-controls');
+    const indexSelector = document.getElementById('index-selector');
 
     // Add this code here to handle initial state
     if (currentDataType === 'annual') {
-        const indexSelector = document.getElementById('index-selector');
+        sliderContainer.style.display = 'none';
+        futureControls.style.display = 'none';
         indexSelector.style.display = 'none';
     }
 
@@ -268,13 +272,12 @@ document.getElementById('data-type-selector').addEventListener('change', functio
     const indexSelector = document.getElementById('index-selector');
     
     if (currentDataType === 'annual') {
-        // Hide the index selector completely for annual data
-        indexSelector.style.display = 'none';
-        sliderContainer.style.display = 'none';
+        sliderContainer.style.display = 'none';      // Hide slider for annual data
         futureControls.style.display = 'none';
+        indexSelector.style.display = 'none';
     } else if (currentDataType === 'monthly') {
         indexSelector.style.display = 'block';
-        sliderContainer.style.display = 'flex';
+        sliderContainer.style.display = 'flex';      // Show slider for monthly
         futureControls.style.display = 'none';
         // Show only monthly options
         Array.from(indexSelector.getElementsByTagName('optgroup')).forEach(group => {
@@ -295,7 +298,6 @@ document.getElementById('data-type-selector').addEventListener('change', functio
     clearCharts();
     loadInitialData();
 });
-
 // Keep this part
 document.getElementById('country-selector').addEventListener('change', function() {
     currentCountry = this.value;
@@ -346,11 +348,13 @@ function initializeMap() {
         .on("zoom", zoomed);
     
     // Initialize SVG elements
-    svg = d3.select("#map")
-        .append("svg")
-        .attr("width", width)
-        .attr("height", height)
-        .call(zoom);
+    const svg = d3.select("#map")
+    .append("svg")
+    .attr("width", "100%")
+    .attr("height", "100%")
+    .attr("viewBox", `0 0 ${width} ${height}`)
+    .style("overflow", "visible")
+    .call(zoom);
     
     // Add clip path
     svg.append("defs")
@@ -419,30 +423,29 @@ yAxis = chartG.append("g")
                 switch(currentCountry) {
                     case 'fra':
                         projection
-                            .center([2.2, 46.8])
-                            .scale(2200)
+                            .center([2.5, 46.5])
+                            .scale(1500)
                             .translate([width / 2, height / 2]);
                         break;
                     case 'esp':
                         projection
                             .center([-3.5, 40.2])
-                            .scale(2800)
+                            .scale(1500)
                             .translate([width / 2, height / 2]);
                         break;
                     case 'deu':
                         projection
                             .center([10, 51])
-                            .scale(3000)
+                            .scale(1500)
                             .translate([width / 2, height / 2]);
                         break;
                     case 'mar':
                         projection
-                            .center([-8, 28])
+                            .center([-6, 29])
                             .scale(1500)
                             .translate([width / 2, height / 2]);
                         break;
                 }
-    
                 path = d3.geoPath().projection(projection);
     
                 const initialIndex = indexSelector.value;
@@ -461,9 +464,15 @@ yAxis = chartG.append("g")
         g.selectAll("*").remove();
         
         const validFeatures = geoData.features.filter(f => 
+            // Filter out the problematic basin IDs
             f.properties.PFAF_ID !== '231110' && 
+            f.properties.PFAF_ID !== '231100' && 
             f.properties.PFAF_ID !== '216042' &&
-            (f.properties.GID_0 === 'MAR' || f.properties.GID_0 === 'ESH')  // Accept both Morocco and Western Sahara
+            // Add any additional IDs that show up in the islands or outside borders
+            !f.properties.PFAF_ID.startsWith('231') // This will filter out all basins starting with 231
+            // Or you could list them individually if there are specific ones:
+            // f.properties.PFAF_ID !== '231101' &&
+            // f.properties.PFAF_ID !== '231102' etc.
         );
     
         // Use the country-specific projection settings
@@ -471,22 +480,26 @@ yAxis = chartG.append("g")
             case 'fra':
                 projection
                     .center([2.5, 46.5])
-                    .scale(3000);
+                    .scale(1500)
+                    .translate([width / 2, height / 2]);
                 break;
             case 'esp':
                 projection
                     .center([-3.5, 40.2])
-                    .scale(2800);
+                    .scale(1500)
+                    .translate([width / 2, height / 2]);
                 break;
             case 'deu':
                 projection
                     .center([10, 51])
-                    .scale(3000);
+                    .scale(1500)
+                    .translate([width / 2, height / 2]);
                 break;
             case 'mar':
                 projection
-                    .center([-6, 29])  // Adjusted center to include both regions
-                    .scale(1800);      // Adjusted scale to show full territory
+                    .center([-6, 29])
+                    .scale(1500)
+                    .translate([width / 2, height / 2]);
                 break;
         }
         projection.translate([width / 2, height / 2]);
@@ -601,16 +614,29 @@ function zoomed(event) {
 }
 
 // Fonction pour mettre à jour les styles des bassins
+// Dans votre fonction updateBasinStyles
 function updateBasinStyles() {
-    g.selectAll("path")
-        .style("stroke", d => selectedBasins.has(d.properties.HYBAS_ID) ? "#ff0000" : "white")
-        .style("stroke-width", d => selectedBasins.has(d.properties.HYBAS_ID) ? "2px" : "0.5px")
-        .style("stroke-dasharray", d => selectedBasins.has(d.properties.HYBAS_ID) ? "4" : "none");
-}
+    // Vérifier si g est défini
+    if (!g) return;
 
+    // Mettre à jour les styles des chemins
+    g.selectAll("path")
+        .style("stroke", function(d) {
+            if (!d || !d.properties || !d.properties.HYBAS_ID) return "white";
+            return selectedBasins.has(d.properties.HYBAS_ID) ? "#ff0000" : "white";
+        })
+        .style("stroke-width", function(d) {
+            if (!d || !d.properties || !d.properties.HYBAS_ID) return "0.5px";
+            return selectedBasins.has(d.properties.HYBAS_ID) ? "2px" : "0.5px";
+        })
+        .style("stroke-dasharray", function(d) {
+            if (!d || !d.properties || !d.properties.HYBAS_ID) return "none";
+            return selectedBasins.has(d.properties.HYBAS_ID) ? "4" : "none";
+        });
+}
 function clearCharts() {
-    chartG.selectAll("path").remove();
-    chartSvg.selectAll(".basin-legend").remove();
+    d3.select("#basin-chart").selectAll("*").remove();
+    d3.select("#stacked-chart").selectAll("*").remove();
     d3.select("#network-graph").selectAll("*").remove();
 }
 
@@ -702,7 +728,7 @@ function updateMap(month, indexKey) {
 
     // Filter out background "basins"
     const validFeatures = geoData.features.filter(f => 
-        f.properties.PFAF_ID !== '231110' && f.properties.PFAF_ID !== '216042'
+        f.properties.PFAF_ID !== '231100' && f.properties.PFAF_ID !== '216042'
     );
 
     const paths = g.selectAll("path")
@@ -717,46 +743,14 @@ function updateMap(month, indexKey) {
         .attr("stroke-width", `${0.5/currentZoom}px`)
         .on("mouseover", handleMouseOver)
         .on("mouseout", handleMouseOut)
-       // In updateMap function, modify the click handler:
-// In updateMap function, modify the click handler
-.on("click", function(event, d) {
-    const basinId = d.properties.HYBAS_ID;
-    
-    if (selectedBasins.has(basinId)) {
-        selectedBasins.delete(basinId);
-    } else {
-        selectedBasins.add(basinId);
-    }
-    
-    updateBasinStyles();
-    
-    // Clear existing charts
-    d3.select("#basin-chart").selectAll("*").remove();
-    
-    if (selectedBasins.size > 0) {
-        const selectedBasinsData = Array.from(selectedBasins).map(id => 
-            geoData.features.find(f => f.properties.HYBAS_ID === id).properties
-        );
-        
-        if (currentDataType === 'annual') {
-            // For annual data, show radar chart
-            chartG.selectAll("*").remove();  // Clear line chart elements
-            updateRadarChart(selectedBasinsData);
-        } else {
-            // For monthly or future data, show line chart
-            updateChartMultiple(selectedBasinsData, indexSelector.value);
-            if(currentDataType === 'monthly') {
-                updateNetworkGraphMultiple(selectedBasinsData, parseInt(slider.value), indexSelector.value);
-            }
-        }
-    } else {
-        clearCharts();
-    }
-});
+        // Ajouter un console.log ici pour vérifier si l'événement est attaché
+        .on("click", function(event, d) {
+            console.log("Click detected on basin!");
+            handleBasinClick(event, d);
+        });
 
     updateBasinStyles();
     updateLegend(indexKey);
-
 }
 // Fonction pour ajouter les interactions à la carte
 function addMapInteractions(paths, valueColumn, categoryColumn, labelColumn, indexKey) {
@@ -801,6 +795,7 @@ function addMapInteractions(paths, valueColumn, categoryColumn, labelColumn, ind
 
 // Fonction pour gérer le clic sur un bassin
 function handleBasinClick(event, d) {
+    console.log("Basin clicked!");
     const basinId = d.properties.HYBAS_ID;
     
     if (selectedBasins.has(basinId)) {
@@ -815,63 +810,101 @@ function handleBasinClick(event, d) {
         const selectedBasinsData = Array.from(selectedBasins).map(id => 
             geoData.features.find(f => f.properties.HYBAS_ID === id).properties
         );
-        updateChartMultiple(selectedBasinsData, indexSelector.value);
-        updateNetworkGraphMultiple(selectedBasinsData, parseInt(slider.value), indexSelector.value);
+
+        console.log("Current data type:", currentDataType);
+        console.log("Selected basins data:", selectedBasinsData);
+
+        if (currentDataType === 'monthly') {
+            try {
+                console.log("Attempting to update charts...");
+                
+                // Test stacked chart explicitly
+                console.log("Testing stacked chart container:");
+                const stackedContainer = document.getElementById('stacked-chart');
+                console.log("Stacked container:", stackedContainer);
+                
+                // Essayons d'ajouter quelque chose de simple au conteneur
+                if (stackedContainer) {
+                    stackedContainer.style.backgroundColor = 'lightblue';
+                    stackedContainer.innerHTML = '<div style="padding: 20px;">Test Content</div>';
+                }
+
+                // Appel des fonctions de mise à jour
+                updateChartMultiple(selectedBasinsData, indexSelector.value);
+                updateStackedAreaChart(selectedBasinsData, indexSelector.value);
+                updateNetworkGraphMultiple(selectedBasinsData, parseInt(slider.value), indexSelector.value);
+            } catch (error) {
+                console.error("Error updating charts:", error);
+            }
+        } else if (currentDataType === 'annual') {
+            updateRadarChart(selectedBasinsData);
+        }
     } else {
         clearCharts();
     }
 }
 
 function updateChartMultiple(basinsData, indexKey) {
-    console.log("Starting updateChartMultiple with data:", basinsData, "and index:", indexKey);
-
-    if (!basinsData || !basinsData.length) {
-        console.log("No basin data provided");
-        return;
-    }
+    if (!basinsData || !basinsData.length) return;
 
     // Clear existing chart
     d3.select("#basin-chart").selectAll("*").remove();
 
-    // Initialize new SVG
+    // Get container dimensions
+    const container = d3.select("#basin-chart").node().getBoundingClientRect();
+    const fullWidth = container.width;
+    const fullHeight = container.height;
+
+    // Define new margins
+    const margin = {
+        top: 40,
+        right: 150,  // Increased for legend
+        bottom: 60,  // Increased for rotated labels
+        left: 60     // Increased for y-axis labels
+    };
+
+    // Calculate actual chart dimensions
+    const width = fullWidth - margin.left - margin.right;
+    const height = fullHeight - margin.top - margin.bottom;
+
+    // Create SVG with new dimensions
     const chartSvg = d3.select("#basin-chart")
         .append("svg")
-        .attr("width", chartWidth)
-        .attr("height", chartHeight);
+        .attr("width", fullWidth)
+        .attr("height", fullHeight)
+        .style("background-color", "white");  // Optional: for visibility
 
+    // Create chart group with margins
     const chartG = chartSvg.append("g")
-        .attr("transform", `translate(${chartMargin.left},${chartMargin.top})`);
+        .attr("transform", `translate(${margin.left},${margin.top})`);
 
     // Create data for line chart
     const chartData = months.map((month, i) => {
         const monthStr = (i + 1).toString().padStart(2, '0');
         const monthData = { month: month };
-        
         basinsData.forEach(basinData => {
             const valueColumn = indices[indexKey].getColumn('monthly', monthStr);
             monthData[`value_${basinData.HYBAS_ID}`] = basinData[valueColumn] || 0;
         });
-        
         return monthData;
     });
 
-    console.log("Chart data created:", chartData);
-
-    // Create scales
+    // Create scales with new dimensions
     const xScale = d3.scalePoint()
-        .range([0, chartWidth - chartMargin.left - chartMargin.right])
+        .range([0, width])
         .domain(months);
 
     const yScale = d3.scaleLinear()
-        .range([chartHeight - chartMargin.top - chartMargin.bottom, 0])
+        .range([height, 0])
         .domain([0, d3.max(chartData, d => 
             d3.max(basinsData.map(basin => d[`value_${basin.HYBAS_ID}`]))
         ) * 1.1]);
 
-    // Add axes
+    // Add axes with improved styling
+    // X-axis
     chartG.append("g")
         .attr("class", "x-axis")
-        .attr("transform", `translate(0,${chartHeight - chartMargin.top - chartMargin.bottom})`)
+        .attr("transform", `translate(0,${height})`)
         .call(d3.axisBottom(xScale))
         .selectAll("text")
         .style("text-anchor", "end")
@@ -879,17 +912,24 @@ function updateChartMultiple(basinsData, indexKey) {
         .attr("dy", ".15em")
         .attr("transform", "rotate(-45)");
 
+    // Y-axis
     chartG.append("g")
         .attr("class", "y-axis")
         .call(d3.axisLeft(yScale));
 
-    // Draw lines
+    // Create legend group
+    const legendGroup = chartSvg.append("g")
+        .attr("class", "legend-group")
+        .attr("transform", `translate(${width + margin.left + 20}, ${margin.top})`);
+
+    // Draw lines and create legend
     basinsData.forEach((basinData, index) => {
         const line = d3.line()
             .x(d => xScale(d.month))
             .y(d => yScale(d[`value_${basinData.HYBAS_ID}`]));
 
-        chartG.append("path")
+        // Draw the line
+        const path = chartG.append("path")
             .datum(chartData)
             .attr("class", `line-${basinData.HYBAS_ID}`)
             .attr("d", line)
@@ -897,45 +937,100 @@ function updateChartMultiple(basinsData, indexKey) {
             .style("stroke", d3.schemeCategory10[index])
             .style("stroke-width", 2);
 
-        // Add legend
-        const basinLabel = basinData.Name || `Basin ${basinData.PFAF_ID}`;
-        chartG.append("text")
-            .attr("x", 50 + index * 120)  // Augmenté l'espacement pour les noms plus longs
-            .attr("y", 20)
-            .style("fill", d3.schemeCategory10[index])
+        // Add legend item
+        const legendItem = legendGroup.append("g")
+            .attr("transform", `translate(0, ${index * 25})`);
+
+        // Add colored rectangle
+        legendItem.append("rect")
+            .attr("width", 15)
+            .attr("height", 15)
+            .attr("fill", d3.schemeCategory10[index]);
+
+        // Add basin name
+        legendItem.append("text")
+            .attr("x", 25)
+            .attr("y", 12)
             .style("font-size", "12px")
-            .text(basinLabel);
+            .style("font-weight", "bold")
+            .text(basinData.basin_name || `Basin ${basinData.PFAF_ID}`);
+
+        // Add hover interaction
+        legendItem
+            .style("cursor", "pointer")
+            .on("mouseover", function() {
+                // Highlight the corresponding line
+                path.style("stroke-width", 4);
+                
+                // Dim other lines
+                chartG.selectAll("path")
+                    .filter(d => !d3.select(d).classed(`line-${basinData.HYBAS_ID}`))
+                    .style("opacity", 0.3);
+            })
+            .on("mouseout", function() {
+                // Reset all lines
+                chartG.selectAll("path")
+                    .style("stroke-width", 2)
+                    .style("opacity", 1);
+            });
     });
+
+    // Add axis labels
+    // Y-axis label
+    chartSvg.append("text")
+        .attr("transform", "rotate(-90)")
+        .attr("y", 20)
+        .attr("x", -height/2 - margin.top)
+        .attr("text-anchor", "middle")
+        .style("font-size", "12px")
+        .text("Value");
+
+    // Chart title
+    chartSvg.append("text")
+        .attr("x", width/2 + margin.left)
+        .attr("y", 20)
+        .attr("text-anchor", "middle")
+        .style("font-size", "16px")
+        .style("font-weight", "bold")
+        .text("Monthly Values by Basin");
 }
 // Fonction pour mettre à jour le graphe réseau
 function updateNetworkGraphMultiple(selectedBasins, month, indexKey) {
-    const networkWidth = document.getElementById('network-graph').clientWidth;
-    const networkHeight = 300;
-    
     // Clear existing graph
     d3.select("#network-graph").selectAll("*").remove();
-    
-    // Create new SVG
+
+    // Get container dimensions
+    const container = document.getElementById('network-graph');
+    const width = container.clientWidth;
+    const height = container.clientHeight;
+
+    // Create SVG
     const networkSvg = d3.select("#network-graph")
         .append("svg")
-        .attr("width", networkWidth)
-        .attr("height", networkHeight);
+        .attr("width", width)
+        .attr("height", height);
 
     // Prepare network data
     const nodes = [];
     const links = [];
     const addedNodes = new Set();
 
-    // Add each selected basin to network
     selectedBasins.forEach(basin => {
         addBasinToNetwork(basin, nodes, links, addedNodes, 0, month, indexKey);
     });
 
-    // Create simulation
+    // Create simulation with boundaries
     const simulation = d3.forceSimulation(nodes)
-        .force("link", d3.forceLink(links).id(d => d.id).distance(80))
-        .force("charge", d3.forceManyBody().strength(-400))
-        .force("center", d3.forceCenter(networkWidth / 2, networkHeight / 2));
+        .force("link", d3.forceLink(links)
+            .id(d => d.id)
+            .distance(80))
+        .force("charge", d3.forceManyBody()
+            .strength(-300))
+        .force("center", d3.forceCenter(width / 2, height / 2))
+        .force("x", d3.forceX(width / 2).strength(0.1))
+        .force("y", d3.forceY(height / 2).strength(0.1))
+        .force("collision", d3.forceCollide().radius(30))
+        .on("tick", ticked);
 
     // Create links
     const link = networkSvg.append("g")
@@ -962,13 +1057,26 @@ function updateNetworkGraphMultiple(selectedBasins, month, indexKey) {
         .selectAll("text")
         .data(nodes)
         .join("text")
-        .text(d => d.pfafId)
+        .text(d => d.basin_name)
         .attr("font-size", "10px")
         .attr("dx", 12)
         .attr("dy", 4);
 
-    // Update positions on simulation tick
-    simulation.on("tick", () => {
+    // Tick function to keep nodes within bounds
+    function ticked() {
+        // Define boundaries with padding
+        const padding = 30;
+        
+        nodes.forEach(d => {
+            // Get node radius (using the same calculation as when creating nodes)
+            const radius = Math.sqrt(d.area) / 40 + 5;
+            
+            // Constrain x position
+            d.x = Math.max(radius + padding, Math.min(width - radius - padding, d.x));
+            // Constrain y position
+            d.y = Math.max(radius + padding, Math.min(height - radius - padding, d.y));
+        });
+
         link
             .attr("x1", d => d.source.x)
             .attr("y1", d => d.source.y)
@@ -982,7 +1090,32 @@ function updateNetworkGraphMultiple(selectedBasins, month, indexKey) {
         labels
             .attr("x", d => d.x)
             .attr("y", d => d.y);
-    });
+    }
+
+    // Drag functions
+    function drag(simulation) {
+        function dragstarted(event) {
+            if (!event.active) simulation.alphaTarget(0.3).restart();
+            event.subject.fx = event.subject.x;
+            event.subject.fy = event.subject.y;
+        }
+
+        function dragged(event) {
+            event.subject.fx = event.x;
+            event.subject.fy = event.y;
+        }
+
+        function dragended(event) {
+            if (!event.active) simulation.alphaTarget(0);
+            event.subject.fx = null;
+            event.subject.fy = null;
+        }
+
+        return d3.drag()
+            .on("start", dragstarted)
+            .on("drag", dragged)
+            .on("end", dragended);
+    }
 }
 
 // Fonction pour préparer les données du graphique
@@ -1090,11 +1223,11 @@ function addBasinToNetwork(basin, nodes, links, addedNodes, depth, month, indexK
         nodes.push({
             id: basinId,
             pfafId: basin.PFAF_ID,
+            basin_name: basin.basin_name,  // Make sure to include basin_name
             area: basin.UP_AREA,
             value: basin[indices[indexKey].getColumn(currentDataType, month)]
         });
 
-        // Find connected basins
         const nextDownId = basin.NEXT_DOWN;
         if (nextDownId) {
             const nextDown = geoData.features.find(f => 
@@ -1105,7 +1238,6 @@ function addBasinToNetwork(basin, nodes, links, addedNodes, depth, month, indexK
                 if (!addedNodes.has(nextDown.HYBAS_ID)) {
                     addBasinToNetwork(nextDown, nodes, links, addedNodes, depth + 1, month, indexKey);
                 }
-                // Only add link if both source and target nodes exist
                 const targetExists = nodes.some(n => n.id === nextDown.HYBAS_ID);
                 if (targetExists) {
                     links.push({
@@ -1268,33 +1400,57 @@ function addArrowMarker(svg) {
 }
 
 // Fonction pour créer les nœuds du réseau
-function createNetworkNodes(svg, nodes, simulation, tooltip, indexKey) {
-    return svg.append("g")
+function createNetworkNodes(nodes, links, networkSvg, networkWidth, networkHeight, indexKey) {
+    // Create node elements
+    const node = networkSvg.append("g")
         .selectAll("circle")
         .data(nodes)
         .join("circle")
         .attr("r", d => Math.sqrt(d.area) / 40 + 5)
         .style("fill", d => indices[indexKey].colorScale(d.value))
-        .style("stroke", d => d.isSelected ? "#333" : "#fff")
-        .style("stroke-width", d => d.isSelected ? 2 : 1)
-        .call(createDragBehavior(simulation))
-        .on("mouseover", function(event, d) {
-            tooltip.transition()
-                .duration(200)
-                .style("opacity", .9);
-            tooltip.html(`
-                ID: ${d.pfafId}<br/>
-                Surface: ${d.area.toFixed(1)} km²<br/>
-                Valeur: ${d.value.toFixed(3)}
-            `)
-                .style("left", (event.pageX + 10) + "px")
-                .style("top", (event.pageY - 28) + "px");
-        })
-        .on("mouseout", function() {
-            tooltip.transition()
-                .duration(500)
-                .style("opacity", 0);
-        });
+        .style("stroke", "#fff")
+        .style("stroke-width", 1.5)
+        .call(drag(simulation));
+
+    // Create labels with basin_name
+    const label = networkSvg.append("g")
+        .selectAll("text")
+        .data(nodes)
+        .join("text")
+        .attr("class", "node-label")
+        .text(d => d.basin_name || d.pfafId)
+        .attr("x", 12)
+        .attr("y", 4)
+        .style("font-size", "10px")
+        .style("font-family", "Arial, sans-serif")
+        .style("pointer-events", "none");
+
+    // Add hover effect for nodes
+    node.on("mouseover", function(event, d) {
+        const tooltip = d3.select("body").append("div")
+            .attr("class", "network-tooltip")
+            .style("opacity", 0);
+
+        tooltip.transition()
+            .duration(200)
+            .style("opacity", .9);
+
+        tooltip.html(`
+            <div style="padding: 8px;">
+                <div style="font-weight: bold;">${d.basin_name || 'N/A'}</div>
+                <div>ID: ${d.pfafId}</div>
+                <div>Surface: ${d.area.toFixed(2)} km²</div>
+                <div>Valeur: ${d.value.toFixed(3)}</div>
+            </div>
+        `)
+        .style("left", (event.pageX + 10) + "px")
+        .style("top", (event.pageY - 28) + "px");
+    })
+    .on("mouseout", function() {
+        d3.selectAll(".network-tooltip").remove();
+    });
+
+    return { node, label };
 }
 
 // Fonction pour créer les étiquettes du réseau
@@ -1304,9 +1460,11 @@ function createNetworkLabels(svg, nodes) {
         .data(nodes)
         .join("text")
         .attr("class", "node-label")
-        .text(d => d.pfafId)
+        .text(d => d.basin_name || d.pfafId)  // Use basin_name instead of pfafId
         .style("text-anchor", "middle")
-        .style("pointer-events", "none");
+        .style("pointer-events", "none")
+        .style("font-size", "10px")
+        .style("font-weight", "bold");
 }
 
 // Fonction pour mettre à jour les positions du réseau
@@ -1376,7 +1534,10 @@ function initializeControls() {
     const monthDisplay = document.getElementById("month-display");
     const indexSelector = document.getElementById("index-selector");
     const indexInfo = document.getElementById("index-info");
-
+    const unselectAllButton = document.getElementById('unselect-all-basins');
+    if (unselectAllButton) {
+        unselectAllButton.addEventListener('click', unselectAllBasins);
+    }
     slider.addEventListener("input", function() {
         const month = parseInt(this.value);
         monthDisplay.textContent = months[month - 1];
@@ -1392,6 +1553,51 @@ function initializeControls() {
         updateMap(parseInt(slider.value), this.value);
         updateVisualizations(this.value);
     });
+    const selectAllButton = document.getElementById('select-all-basins');
+    if (selectAllButton) {
+        selectAllButton.addEventListener('click', function() {
+            console.log("Select all button clicked");
+            
+            // Vider la sélection actuelle
+            selectedBasins.clear();
+            
+            // Sélectionner tous les bassins du pays actuel
+            const countryBasins = geoData.features
+                .filter(f => {
+                    // Filtrer les bassins invalides
+                    return f.properties.PFAF_ID !== '231110' && 
+                           f.properties.PFAF_ID !== '216042';
+                });
+
+            // Ajouter tous les bassins à la sélection
+            countryBasins.forEach(basin => {
+                selectedBasins.add(basin.properties.HYBAS_ID);
+            });
+
+            // Mettre à jour les styles et visualisations
+            updateBasinStyles();
+
+            if (selectedBasins.size > 0) {
+                const selectedBasinsData = Array.from(selectedBasins)
+                    .map(id => geoData.features.find(f => 
+                        f.properties.HYBAS_ID === id).properties);
+
+                if (currentDataType === 'monthly') {
+                    console.log("Updating monthly visualizations");
+                    updateChartMultiple(selectedBasinsData, indexSelector.value);
+                    updateStackedAreaChart(selectedBasinsData, indexSelector.value);
+                    updateNetworkGraphMultiple(selectedBasinsData, 
+                        parseInt(slider.value), indexSelector.value);
+                } else if (currentDataType === 'annual') {
+                    console.log("Updating annual visualizations");
+                    updateRadarChart(selectedBasinsData);
+                }
+            }
+        });
+    } else {
+        console.error("Select all button not found");
+    }
+
 }
 
 // Fonction principale d'initialisation
@@ -1514,24 +1720,14 @@ function initializeMap() {
         .attr("height", height)
         .call(zoom);
     
-    // Add clip path
-    svg.append("defs")
-        .append("clipPath")
-        .attr("id", "map-clip")
-        .append("rect")
-        .attr("width", width)
-        .attr("height", height);
-    
-    // Initialize map groups
-    mapGroup = svg.append("g")
-        .attr("clip-path", "url(#map-clip)");
+    // Initialize map groups without clip path
+    mapGroup = svg.append("g");  // Removed clip-path attribute
     
     g = mapGroup.append("g")
         .attr("transform", `translate(${margin.left},${margin.top})`);
 
     return { svg, g, mapGroup, projection, path, zoom };
 }
-
 
 function handleMouseOver(event, d) {
     d3.select(this)
@@ -1544,18 +1740,32 @@ function handleMouseOver(event, d) {
         .duration(200)
         .style("opacity", .9);
         
+    // Format area with thousand separators
+    const formattedArea = new Intl.NumberFormat('fr-FR').format(d.properties.UP_AREA?.toFixed(2));
+    
+    // Get current value based on selected options
+    const currentValue = d.properties[indices[indexSelector.value].getColumn(
+        currentDataType, 
+        currentDataType === 'future' ? 
+            { scenario: document.getElementById('scenario-selector').value,
+              year: document.getElementById('year-selector').value } : 
+            parseInt(document.getElementById("month-slider").value)
+    )];
+
     tooltip.html(`
-        Basin ID: ${d.properties.PFAF_ID}<br/>
-        Area: ${d.properties.UP_AREA?.toFixed(2)} km²<br/>
-        Value: ${d.properties[indices[indexSelector.value].getColumn(currentDataType, 
-            currentDataType === 'future' ? 
-                { scenario: document.getElementById('scenario-selector').value,
-                  year: document.getElementById('year-selector').value } : 
-                parseInt(document.getElementById("month-slider").value)
-        )]?.toFixed(3)}
+        <div style="padding: 8px;">
+            <div style="font-weight: bold; margin-bottom: 5px;">${d.properties.basin_name || 'N/A'}</div>
+            <div>ID: ${d.properties.PFAF_ID}</div>
+            <div>Surface: ${formattedArea} km²</div>
+            ${currentValue ? `<div>Valeur: ${currentValue.toFixed(3)}</div>` : ''}
+        </div>
     `)
     .style("left", (event.pageX + 10) + "px")
-    .style("top", (event.pageY - 28) + "px");
+    .style("top", (event.pageY - 28) + "px")
+    .style("background", "rgba(255, 255, 255, 0.95)")
+    .style("border", "1px solid #ddd")
+    .style("border-radius", "4px")
+    .style("box-shadow", "2px 2px 6px rgba(0, 0, 0, 0.1)");
 }
 
 function handleMouseOut(event, d) {
@@ -1587,68 +1797,82 @@ function updateRadarChart(selectedBasinsData) {
 
     if (!selectedBasinsData || selectedBasinsData.length === 0) return;
 
-    const width = 500;
-    const height = 500;
-    const radius = Math.min(width, height) / 2 - 80;
+    const width = 800;
+const height = 500;
+const radius = Math.min(width-130, height-130) / 2 - 80;  // Reduced width to make space for legend
 
-    const svg = d3.select("#basin-chart")
-        .append("svg")
-        .attr("width", width)
-        .attr("height", height)
-        .append("g")
-        .attr("transform", `translate(${width/2},${height/2})`);
+// Move the entire chart left
+const svg = d3.select("#basin-chart")
+    .append("svg")
+    .attr("width", width)
+    .attr("height", height)
+    .append("g")
+    .attr("transform", `translate(${width/3},${height/2})`); 
 
-    // Define indices with their proper scales
+
+
+
+    // Define indices with their actual ranges from data analysis
     const annualIndices = [
         { 
             key: 'bw _raw', 
             name: 'Water Stress',
-            domain: [0, 0.8]  // Based on BWS scale
+            domain: [0, 9.62],
+            format: v => v.toFixed(2)
         },
         { 
             key: 'bwd_raw', 
             name: 'Water Depletion',
-            domain: [0, 0.5]  // Based on BWD scale
+            domain: [0, 5.16],
+            format: v => v.toFixed(2)
         },
         { 
             key: 'iav_raw', 
             name: 'Interannual Variability',
-            domain: [0, 1.0]  // Based on IAV scale
+            domain: [0.24, 3.52],
+            format: v => v.toFixed(2)
         },
         { 
             key: 'sev_raw', 
             name: 'Seasonal Variability',
-            domain: [0, 1.33]  // Based on SEV scale
+            domain: [0.03, 1.08],
+            format: v => v.toFixed(2)
         },
         { 
             key: 'gtd_raw', 
             name: 'Groundwater Decline',
-            domain: [-0.05, 0]  // Based on GTD scale
+            domain: [-1.43, 1.01],
+            format: v => v.toFixed(2)
         },
         { 
             key: 'rfr_raw', 
             name: 'Riverine Flood Risk',
-            domain: [0, 0.02]  // Based on RFR scale
+            domain: [0, 0.18],
+            format: v => v.toFixed(3)
         },
         { 
             key: 'drr_raw', 
             name: 'Drought Risk',
-            domain: [0, 0.8]  // Based on DRR scale
+            domain: [0.22, 0.91],
+            format: v => v.toFixed(2)
         },
         { 
             key: 'ucw_raw', 
             name: 'Untreated Wastewater',
-            domain: [0, 70]  // Based on UCW scale
+            domain: [-1, 1],
+            format: v => v.toFixed(2)
         },
         { 
             key: 'cep_raw', 
             name: 'Coastal Eutrophication',
-            domain: [0, 10]  // Based on CEP scale
+            domain: [-6.06, 12.10],
+            format: v => v.toFixed(2)
         },
         { 
             key: 'rri_raw', 
             name: 'RepRisk Index',
-            domain: [0, 100]  // Based on RRI scale
+            domain: [8, 86],
+            format: v => v.toFixed(0)
         }
     ];
 
@@ -1656,16 +1880,26 @@ function updateRadarChart(selectedBasinsData) {
         .domain([0, annualIndices.length])
         .range([0, 2 * Math.PI]);
 
-    // Draw grid circles
+    // Draw grid circles with labels
     const gridLevels = [0.2, 0.4, 0.6, 0.8, 1];
     gridLevels.forEach(level => {
+        // Draw circle
         svg.append("circle")
             .attr("cx", 0)
             .attr("cy", 0)
             .attr("r", radius * level)
             .attr("fill", "none")
             .attr("stroke", "#ddd")
-            .attr("stroke-dasharray", "2,2");
+            .attr("stroke-dasharray", "2,2")
+            .attr("class", "grid-circle");
+
+        // Add percentage label
+        svg.append("text")
+            .attr("x", 5)
+            .attr("y", -radius * level)
+            .attr("fill", "#666")
+            .attr("font-size", "10px")
+            .text(`${(level * 100).toFixed(0)}%`);
     });
 
     // Draw axes lines
@@ -1676,7 +1910,8 @@ function updateRadarChart(selectedBasinsData) {
             .attr("y1", 0)
             .attr("x2", radius * Math.cos(angle - Math.PI/2))
             .attr("y2", radius * Math.sin(angle - Math.PI/2))
-            .attr("stroke", "#ddd");
+            .attr("stroke", "#ddd")
+            .attr("stroke-width", 1);
     });
 
     // Draw data for each basin
@@ -1694,26 +1929,101 @@ function updateRadarChart(selectedBasinsData) {
 
             return {
                 x: radius * normalizedValue * Math.cos(angle - Math.PI/2),
-                y: radius * normalizedValue * Math.sin(angle - Math.PI/2)
+                y: radius * normalizedValue * Math.sin(angle - Math.PI/2),
+                rawValue: value,
+                indicator: ind
             };
         });
 
-        // Create path
-        svg.append("path")
+        // Create path with hover effect
+        const path = svg.append("path")
             .datum(points)
             .attr("d", d => `M ${d.map(p => `${p.x},${p.y}`).join(" L ")} Z`)
-            .attr("fill", d3.schemeCategory10[index])
+            .attr("fill", d3.schemeTableau10[index % 10]
+            )
             .attr("fill-opacity", 0.3)
-            .attr("stroke", d3.schemeCategory10[index])
-            .attr("stroke-width", 2);
+            .attr("stroke", d3.schemeTableau10[index % 10]
+            )
+            .attr("stroke-width", 2)
+            .attr("class", "radar-path")
+            .on("mouseover", function() {
+                d3.select(this)
+                    .attr("fill-opacity", 0.5)
+                    .attr("stroke-width", 3);
+            })
+            .on("mouseout", function() {
+                d3.select(this)
+                    .attr("fill-opacity", 0.3)
+                    .attr("stroke-width", 2);
+            });
 
-        // Add legend
-        svg.append("text")
-            .attr("x", -width/2 + 10)
-            .attr("y", height/2 - 40 - (index * 20))
-            .text(`Basin ${basin.PFAF_ID}`)
-            .attr("fill", d3.schemeCategory10[index])
-            .attr("font-size", "12px");
+        // Add points with tooltips
+        svg.selectAll(null)
+            .data(points)
+            .enter()
+            .append("circle")
+            .attr("cx", d => d.x)
+            .attr("cy", d => d.y)
+            .attr("r", 4)
+            .attr("fill", d3.schemeTableau10[index % 10])
+            .on("mouseover", function(event, d) {
+                // Enlarge point
+                d3.select(this)
+                    .transition()
+                    .duration(200)
+                    .attr("r", 6);
+
+                // Show tooltip
+                const tooltip = d3.select("body").append("div")
+                    .attr("class", "tooltip")
+                    .style("opacity", 0)
+                    .style("position", "absolute")
+                    .style("background", "white")
+                    .style("padding", "8px")
+                    .style("border", "1px solid #ddd")
+                    .style("border-radius", "4px")
+                    .style("pointer-events", "none")
+                    .style("font-size", "12px");
+
+                tooltip.transition()
+                    .duration(200)
+                    .style("opacity", .9);
+
+                tooltip.html(`
+                    <strong>${d.indicator.name}</strong><br/>
+                    Value: ${d.indicator.format(d.rawValue)}<br/>
+                    Range: [${d.indicator.format(d.indicator.domain[0])}, 
+                           ${d.indicator.format(d.indicator.domain[1])}]
+                `)
+                    .style("left", (event.pageX + 10) + "px")
+                    .style("top", (event.pageY - 28) + "px");
+            })
+            .on("mouseout", function() {
+                d3.select(this)
+                    .transition()
+                    .duration(200)
+                    .attr("r", 4);
+                
+                d3.selectAll(".tooltip").remove();
+            });
+
+        // Add legend item
+        const legendY = (-height/3) + (index * 25);  // Start from top
+        const legend = svg.append("g")
+            .attr("transform", `translate(${radius + 200}, ${legendY})`);
+        legend.append("rect")
+            .attr("width", 15)
+            .attr("height", 15)
+            .attr("fill", d3.schemeTableau10[index % 10]);
+
+            legend.append("text")
+            .attr("x", 25)
+            .attr("y", 12)
+            .text(basin.basin_name || `Basin ${basin.PFAF_ID}`)
+            .attr("fill", "#333")
+            .attr("font-size", "12px")
+            .attr("font-weight", "500");
+        
     });
 
     // Add axis labels with improved positioning
@@ -1725,12 +2035,283 @@ function updateRadarChart(selectedBasinsData) {
         const anchor = (x < -1) ? "end" : (x > 1) ? "start" : "middle";
         const baseline = (y < -1) ? "baseline" : (y > 1) ? "hanging" : "middle";
         
-        svg.append("text")
-            .attr("x", x)
-            .attr("y", y)
-            .attr("text-anchor", anchor)
-            .attr("dominant-baseline", baseline)
-            .attr("font-size", "10px")
-            .text(ind.name);
+        // Add background for better readability
+        const label = svg.append("g")
+            .attr("transform", `translate(${x},${y})`);
+
+        // Add label with dynamic positioning
+        label.append("text")
+    .attr("text-anchor", anchor)
+    .attr("dominant-baseline", baseline)
+    .attr("fill", "#333")
+    .attr("font-size", "12px")         // Increased from 11px
+    .attr("font-weight", "bold")       // Changed from 500 to bold
+    .style("font-family", "Arial")    // Added for better visibility
+    .text(ind.name);
     });
+}
+
+
+
+
+
+
+
+function updateStackedAreaChart(basinsData, indexKey) {
+    // Clear previous content
+    d3.select("#stacked-chart").selectAll("*").remove();
+
+    if (!basinsData || basinsData.length === 0) return;
+
+    // Get container dimensions with more width
+    const container = document.getElementById('stacked-chart');
+    const width = container.clientWidth;
+    const height = container.clientHeight;
+    
+    // Adjust margins - significantly increased right margin for legend
+    const margin = {
+        top: 30,
+        right: 200,  // Increased significantly for legend
+        bottom: 50,
+        left: 60     // Slightly increased for y-axis labels
+    };
+
+    // Calculate actual chart dimensions
+    const chartWidth = width - margin.left - margin.right;
+    const chartHeight = height - margin.top - margin.bottom;
+
+    // Create SVG with more width
+    const svg = d3.select("#stacked-chart")
+        .append("svg")
+        .attr("width", width)
+        .attr("height", height)
+        .append("g")
+        .attr("transform", `translate(${margin.left},${margin.top})`);
+
+        const legend = svg.append("g")
+        .attr("class", "legend")
+        .attr("transform", `translate(${chartWidth + 70}, 0)`);  // Increased from 20 to 60
+
+    // Add legend items
+    basinsData.forEach((basin, i) => {
+        const legendItem = legend.append("g")
+            .attr("transform", `translate(0, ${i * 25})`);
+
+        legendItem.append("rect")
+            .attr("width", 15)
+            .attr("height", 15)
+            .attr("fill", d3.schemeTableau10[i]);
+
+        legendItem.append("text")
+            .attr("x", 25)
+            .attr("y", 12)
+            .style("font-size", "12px")
+            .text(basin.basin_name || `Basin ${basin.PFAF_ID}`);
+    });
+
+    // Add title with reduced font size
+    svg.append("text")
+        .attr("x", chartWidth / 2)
+        .attr("y", -10)
+        .attr("text-anchor", "middle")
+        .style("font-size", "12px")
+        .text("Evolution mensuelle des valeurs par bassin");
+
+    // Prepare data for stacking
+    const monthlyData = months.map((month, i) => {
+        const monthStr = (i + 1).toString().padStart(2, '0');
+        const data = { month };
+        
+        basinsData.forEach(basin => {
+            const valueColumn = indices[indexKey].getColumn('monthly', monthStr);
+            data[basin.basin_name || `Basin ${basin.PFAF_ID}`] = basin[valueColumn] || 0;
+        });
+        
+        return data;
+    });
+
+    // Create stack generator
+    const stack = d3.stack()
+        .keys(basinsData.map(d => d.basin_name || `Basin ${d.PFAF_ID}`))
+        .order(d3.stackOrderNone)
+        .offset(d3.stackOffsetNone);
+
+    const series = stack(monthlyData);
+
+    // Create scales
+    const x = d3.scalePoint()
+        .domain(months)
+        .range([margin.left, width - margin.right]);
+
+    const y = d3.scaleLinear()
+        .domain([0, d3.max(series, d => d3.max(d, d => d[1]))])
+        .nice()
+        .range([height - margin.bottom, margin.top]);
+
+    const color = d3.scaleOrdinal()
+        .domain(basinsData.map(d => d.basin_name || `Basin ${d.PFAF_ID}`))
+        .range(d3.schemeTableau10);
+
+    // Create area generator
+    const area = d3.area()
+        .x(d => x(d.data.month))
+        .y0(d => y(d[0]))
+        .y1(d => y(d[1]))
+        .curve(d3.curveMonotoneX);
+
+    // Add areas
+    const areaGroups = svg.append("g")
+        .selectAll("g")
+        .data(series)
+        .join("g");
+
+    areaGroups.append("path")
+        .attr("fill", d => color(d.key))
+        .attr("d", area)
+        .style("opacity", 0.8)
+        .append("title")
+        .text(d => d.key);
+
+    // Add X axis
+    svg.append("g")
+        .attr("transform", `translate(0,${height - margin.bottom})`)
+        .call(d3.axisBottom(x))
+        .selectAll("text")
+        .style("text-anchor", "end")
+        .attr("dx", "-.8em")
+        .attr("dy", ".15em")
+        .attr("transform", "rotate(-45)");
+
+    // Add Y axis
+    svg.append("g")
+        .attr("transform", `translate(${margin.left},0)`)
+        .call(d3.axisLeft(y))
+        .call(g => g.select(".domain").remove());
+
+    // Add grid lines
+    svg.append("g")
+        .attr("class", "grid")
+        .attr("transform", `translate(${margin.left},0)`)
+        .call(d3.axisLeft(y)
+            .tickSize(-(width - margin.left - margin.right))
+            .tickFormat("")
+        )
+        .call(g => g.select(".domain").remove())
+        .call(g => g.selectAll(".tick line")
+            .attr("stroke-opacity", 0.1));
+
+
+
+    legend.selectAll("text")
+        .data(basinsData)
+        .join("text")
+        .attr("x", 25)
+        .attr("y", (d, i) => i * 20 + 12)
+        .text(d => d.basin_name || `Basin ${d.PFAF_ID}`)
+        .style("font-size", "12px");
+
+    // Add title
+    svg.append("text")
+        .attr("x", width / 2)
+        .attr("y", margin.top / 2)
+        .attr("text-anchor", "middle")
+        .style("font-size", "14px")
+        .style("font-weight", "bold")
+        .text("Evolution mensuelle des valeurs par bassin");
+
+    // Add Y axis label
+    svg.append("text")
+        .attr("transform", "rotate(-90)")
+        .attr("y", margin.left / 3)
+        .attr("x", -(height / 2))
+        .attr("text-anchor", "middle")
+        .text("Valeur");
+}
+
+
+
+
+
+function getCurrentCountryBasins() {
+    return geoData.features.filter(f => {
+        // Filtrer les bassins invalides et vérifier le pays
+        return f.properties.PFAF_ID !== '231110' && 
+               f.properties.PFAF_ID !== '216042' &&
+               f.properties.country?.toLowerCase() === currentCountry.toLowerCase();
+    });
+}
+
+
+
+
+function selectAllBasins() {
+    console.log("Selecting all basins for current country:", currentCountry);
+    
+    // Obtenir les bassins du pays actuel
+    const countryBasins = getCurrentCountryBasins();
+    
+    // Ajouter tous les bassins à la sélection
+    countryBasins.forEach(basin => {
+        selectedBasins.add(basin.properties.HYBAS_ID);
+    });
+
+    // Mettre à jour les visualisations
+    updateBasinStyles();
+    
+    if (selectedBasins.size > 0) {
+        const selectedBasinsData = Array.from(selectedBasins)
+            .map(id => geoData.features.find(f => f.properties.HYBAS_ID === id).properties);
+
+        if (currentDataType === 'monthly') {
+            updateChartMultiple(selectedBasinsData, indexSelector.value);
+            updateStackedAreaChart(selectedBasinsData, indexSelector.value);
+            updateNetworkGraphMultiple(selectedBasinsData, parseInt(slider.value), indexSelector.value);
+        } else if (currentDataType === 'annual') {
+            updateRadarChart(selectedBasinsData);
+        }
+    }
+}
+
+
+function unselectAllBasins() {
+    // Clear all selected basins
+    selectedBasins.clear();
+    
+    // Update the visual styles of the basins
+    updateBasinStyles();
+    
+    // Clear all charts
+    d3.select("#basin-chart").selectAll("*").remove();
+    d3.select("#stacked-chart").selectAll("*").remove();
+    d3.select("#network-graph").selectAll("*").remove();
+}
+
+
+
+
+// Add sidebar toggle functionality
+document.getElementById('toggle-info').addEventListener('click', function() {
+    const sidebar = document.getElementById('info-sidebar');
+    sidebar.classList.toggle('active');
+});
+
+document.getElementById('close-sidebar').addEventListener('click', function() {
+    const sidebar = document.getElementById('info-sidebar');
+    sidebar.classList.remove('active');
+});
+
+
+
+
+function isValidBasin(feature) {
+    if (!feature || !feature.properties) return false;
+    
+    // For Spain, we want to filter out specific basins
+    if (currentCountry === 'esp') {
+        // Filter out all basins starting with 231
+        return !feature.properties.PFAF_ID.startsWith('231') &&
+               feature.properties.PFAF_ID !== '216042';
+    }
+    
+    return true;
 }
