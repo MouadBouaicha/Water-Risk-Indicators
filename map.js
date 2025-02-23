@@ -693,57 +693,57 @@ indexSelector.addEventListener("change", function() {
 // Fonction pour mettre à jour la légende
 function updateLegend(indexKey) {
     const indexConfig = indices[indexKey];
-    
+    if (!indexConfig) return;
+
     // Clear existing legend
     d3.select("#legend").selectAll("*").remove();
-    
+
+    // More compact dimensions
     const legendWidth = 400;
-    const legendHeight = 60;
-    const margin = { top: 10, right: 20, bottom: 25, left: 20 };
+    const legendHeight = 35;  // Reduced height
+    const margin = { top: 5, right: 20, bottom: 15, left: 20 };  // Reduced margins
 
     const legend = d3.select("#legend")
+        .style("background", "white")
+        .style("padding", "5px")  // Reduced padding
         .append("svg")
         .attr("width", legendWidth)
         .attr("height", legendHeight);
 
-    // Create scale for legend
-    const legendScale = d3.scaleLinear()
-        .domain([0, d3.max(indexConfig.colorScale.domain())])
-        .range([0, legendWidth - margin.left - margin.right]);
+    // Get color scale info
+    const scale = indexConfig.colorScale;
+    const domain = scale.domain();
+    const range = scale.range();
+    const width = (legendWidth - margin.left - margin.right) / range.length;
 
     // Add color rectangles
-    const boxWidth = (legendWidth - margin.left - margin.right) / indexConfig.colorScale.range().length;
-    
-    indexConfig.colorScale.range().forEach((color, i) => {
+    range.forEach((color, i) => {
         legend.append("rect")
-            .attr("x", margin.left + (i * boxWidth))
+            .attr("x", margin.left + (i * width))
             .attr("y", margin.top)
-            .attr("width", boxWidth)
-            .attr("height", 20)
+            .attr("width", width)
+            .attr("height", 15)  // Reduced height
             .style("fill", color);
     });
 
-    // Add axis
-    const axis = d3.axisBottom(legendScale)
-        .tickValues([0, ...indexConfig.colorScale.domain()])
+    // Create scale for the axis
+    const axisScale = d3.scaleLinear()
+        .domain([0, d3.max(domain)])
+        .range([0, legendWidth - margin.left - margin.right]);
+
+    const axis = d3.axisBottom(axisScale)
+        .tickValues([0, ...domain])
         .tickFormat(d => d.toFixed(2));
 
+    // Add axis
     legend.append("g")
-        .attr("transform", `translate(${margin.left},${margin.top + 20})`)
+        .attr("transform", `translate(${margin.left},${margin.top + 15})`)  // Adjusted position
         .call(axis)
         .selectAll("text")
         .style("text-anchor", "middle")
-        .style("font-size", "12px");
-
-    // Add title
-    legend.append("text")
-        .attr("x", legendWidth / 2)
-        .attr("y", legendHeight - 5)
-        .attr("text-anchor", "middle")
-        .style("font-size", "12px")
-        .text(indexConfig.name);
+        .style("font-size", "10px");  // Smaller font
 }
-
+// Modify updateMap to explicitly call updateLegend
 function updateMap(month, indexKey) {
     if (!geoData) return;
 
@@ -755,12 +755,14 @@ function updateMap(month, indexKey) {
             month
     );
 
-    // Filter out background "basins"
+    // Update paths with colors
     const validFeatures = geoData.features.filter(f => 
-        f.properties.PFAF_ID !== '231100' && f.properties.PFAF_ID !== '216042'
+        f.properties.PFAF_ID !== '231110' && 
+        f.properties.PFAF_ID !== '216042' &&
+        !f.properties.PFAF_ID.startsWith('231')
     );
 
-    const paths = g.selectAll("path")
+    g.selectAll("path")
         .data(validFeatures)
         .join("path")
         .attr("d", path)
@@ -772,15 +774,15 @@ function updateMap(month, indexKey) {
         .attr("stroke-width", `${0.5/currentZoom}px`)
         .on("mouseover", handleMouseOver)
         .on("mouseout", handleMouseOut)
-        // Ajouter un console.log ici pour vérifier si l'événement est attaché
-        .on("click", function(event, d) {
-            console.log("Click detected on basin!");
-            handleBasinClick(event, d);
-        });
+        .on("click", handleBasinClick);
 
-    updateBasinStyles();
+    // Update the legend
     updateLegend(indexKey);
+    
+    // Update selected basins styles
+    updateBasinStyles();
 }
+
 // Fonction pour ajouter les interactions à la carte
 function addMapInteractions(paths, valueColumn, categoryColumn, labelColumn, indexKey) {
     const tooltip = d3.select("body")
