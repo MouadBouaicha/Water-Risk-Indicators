@@ -245,29 +245,22 @@ document.addEventListener('DOMContentLoaded', () => {
     const futureControls = document.querySelector('.future-controls');
     const indexSelector = document.getElementById('index-selector');
 
-    // Add this code here to handle initial state
     if (currentDataType === 'annual') {
         sliderContainer.style.display = 'none';
         futureControls.style.display = 'none';
         indexSelector.style.display = 'none';
     }
 
-    // Then initialize controls
     initializeControls();
     initializeZoomControls();
     
-    // Finally load the data
     loadInitialData();
 });
 
-// Add after your other event listeners
-// Add this to your map.js file
-// Dans votre event listener pour data-type-selector
-// Dans votre event listener pour data-type-selector
+
 document.getElementById('data-type-selector').addEventListener('change', function(e) {
     currentDataType = e.target.value;
 
-    // Show/hide controls based on data type
     const sliderContainer = document.querySelector('.slider-container');
     const futureControls = document.querySelector('.future-controls');
     const indexSelector = document.getElementById('index-selector');
@@ -288,25 +281,23 @@ document.getElementById('data-type-selector').addEventListener('change', functio
         indexSelector.style.display = 'block';
         sliderContainer.style.display = 'none';
         futureControls.style.display = 'flex';
-        // Show only future options
         Array.from(indexSelector.getElementsByTagName('optgroup')).forEach(group => {
             group.style.display = group.classList.contains('future-options') ? 'block' : 'none';
         });
     }
 
-    // Reset selection and update visualizations
     selectedBasins.clear();
     clearCharts();
     loadInitialData();
 });
-// Keep this part
+
 document.getElementById('country-selector').addEventListener('change', function() {
     currentCountry = this.value;
     selectedBasins.clear();
     clearCharts();
     loadInitialData();
 });
-// Add CSS for country selector
+
 const style = document.createElement('style');
 style.textContent = `
 .country-selector {
@@ -318,12 +309,6 @@ style.textContent = `
 }
 `;
 document.head.appendChild(style);
-
-// Current country state
-
-
-
-
 
 
 
@@ -383,7 +368,6 @@ function initializeMap() {
     
 
     
-    // Initialize chart SVG
     const chartSvg = d3.select("#basin-chart")
         .append("svg")
         .attr("width", chartWidth)
@@ -409,54 +393,82 @@ xAxis = chartG.append("g")
 yAxis = chartG.append("g")
     .attr("class", "y-axis");
 
+const dataCache = {};
 
-    async function loadInitialData() {
-        try {
+async function loadInitialData() {
+    try {
+        // Show loading indicator if you have one
+        const loadingIndicator = document.getElementById('loading-indicator');
+        if (loadingIndicator) loadingIndicator.style.display = 'block';
+        
+        const cacheKey = `${currentCountry}_${currentDataType}`;
+        
+        // Use cached data if available
+        if (dataCache[cacheKey]) {
+            console.log("Using cached data for", cacheKey);
+            geoData = dataCache[cacheKey];
+        } else {
+            // Fetch fresh data
+            console.log("Fetching data for", cacheKey);
             const response = await fetch(`processed_data/${currentCountry}/${currentCountry}_${currentDataType}.geojson`);
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
             geoData = await response.json();
             
-            if (geoData) {
-                projection = d3.geoMercator();
-                
-                switch(currentCountry) {
-                    case 'fra':
-                        projection
-                            .center([2.5, 46.5])
-                            .scale(1500)
-                            .translate([width / 2, height / 2]);
-                        break;
-                    case 'esp':
-                        projection
-                            .center([-3.5, 40.2])
-                            .scale(1500)
-                            .translate([width / 2, height / 2]);
-                        break;
-                    case 'deu':
-                        projection
-                            .center([10, 51])
-                            .scale(1500)
-                            .translate([width / 2, height / 2]);
-                        break;
-                    case 'mar':
-                        projection
-                            .center([-6, 29])
-                            .scale(1500)
-                            .translate([width / 2, height / 2]);
-                        break;
-                }
-                path = d3.geoPath().projection(projection);
-    
-                const initialIndex = indexSelector.value;
-                indexInfo.textContent = indices[initialIndex].description;
-                updateMap(1, initialIndex);
-            }
-        } catch (error) {
-            console.error("Error loading data:", error);
+            // Cache the data without modifying it
+            dataCache[cacheKey] = geoData;
         }
+        
+        if (geoData) {
+            // Set up projection based on country
+            projection = d3.geoMercator();
+            
+            switch(currentCountry) {
+                case 'fra':
+                    projection
+                        .center([2.5, 46.5])
+                        .scale(1500)
+                        .translate([width / 2, height / 2]);
+                    break;
+                case 'esp':
+                    projection
+                        .center([-3.5, 40.2])
+                        .scale(1500)
+                        .translate([width / 2, height / 2]);
+                    break;
+                case 'deu':
+                    projection
+                        .center([10, 51])
+                        .scale(1500)
+                        .translate([width / 2, height / 2]);
+                    break;
+                case 'mar':
+                    projection
+                        .center([-6, 29])
+                        .scale(1500)
+                        .translate([width / 2, height / 2]);
+                    break;
+            }
+            path = d3.geoPath().projection(projection);
+
+            const initialIndex = indexSelector.value;
+            indexInfo.textContent = indices[initialIndex].description;
+            updateMap(1, initialIndex);
+        }
+    } catch (error) {
+        console.error("Error loading data:", error);
+        const errorMsg = document.createElement('div');
+        errorMsg.style.color = 'red';
+        errorMsg.style.padding = '20px';
+        errorMsg.textContent = `Error loading data: ${error.message}`;
+        document.getElementById('map').appendChild(errorMsg);
+    } finally {
+        // Hide loading indicator
+        const loadingIndicator = document.getElementById('loading-indicator');
+        if (loadingIndicator) loadingIndicator.style.display = 'none';
     }
+}
 
     function updateVisualization() {
         if (!geoData) return;
@@ -464,18 +476,12 @@ yAxis = chartG.append("g")
         // Clear existing elements
         g.selectAll("*").remove();
         
+        // Use ALL features without filtering
         const validFeatures = geoData.features.filter(f => 
-            // Filter out the problematic basin IDs
             f.properties.PFAF_ID !== '231110' && 
             f.properties.PFAF_ID !== '231100' && 
-            f.properties.PFAF_ID !== '216042' &&
-            // Add any additional IDs that show up in the islands or outside borders
-            !f.properties.PFAF_ID.startsWith('231') // This will filter out all basins starting with 231
-            // Or you could list them individually if there are specific ones:
-            // f.properties.PFAF_ID !== '231101' &&
-            // f.properties.PFAF_ID !== '231102' etc.
-        );
-    
+            f.properties.PFAF_ID !== '216042'
+        );        
         // Use the country-specific projection settings
         switch(currentCountry) {
             case 'fra':
@@ -505,6 +511,7 @@ yAxis = chartG.append("g")
         }
         projection.translate([width / 2, height / 2]);
         path = d3.geoPath().projection(projection);
+        
         // Create the features
         g.selectAll("path")
             .data(validFeatures)
@@ -755,11 +762,11 @@ function updateMap(month, indexKey) {
             month
     );
 
-    // Update paths with colors
+    // Use ALL features without filtering
     const validFeatures = geoData.features.filter(f => 
-        f.properties.PFAF_ID !== '231110' && 
-        f.properties.PFAF_ID !== '216042' &&
-        !f.properties.PFAF_ID.startsWith('231')
+        
+        f.properties.PFAF_ID !== '231100' && 
+        f.properties.PFAF_ID !== '216042'
     );
 
     g.selectAll("path")
@@ -1223,12 +1230,24 @@ function addBasinToNetwork(basin, nodes, links, addedNodes, depth, month, indexK
     const basinId = basin.HYBAS_ID;
     if (!addedNodes.has(basinId)) {
         addedNodes.add(basinId);
+        
+        // Fix for future projections - use proper column name construction
+        const valueColumn = indices[indexKey].getColumn(
+            currentDataType, 
+            currentDataType === 'future' ? 
+                { 
+                    scenario: document.getElementById('scenario-selector').value,
+                    year: document.getElementById('year-selector').value 
+                } : 
+                month
+        );
+        
         nodes.push({
             id: basinId,
             pfafId: basin.PFAF_ID,
-            basin_name: basin.basin_name,  // Make sure to include basin_name
+            basin_name: basin.basin_name,
             area: basin.UP_AREA,
-            value: basin[indices[indexKey].getColumn(currentDataType, month)]
+            value: basin[valueColumn]
         });
 
         const nextDownId = basin.NEXT_DOWN;
@@ -1696,7 +1715,6 @@ function initializeZoomControls() {
             .call(zoom.transform, d3.zoomIdentity);
     });
 }
-const dataCache = {};
 
 
 // Add at the beginning of the file
@@ -1740,7 +1758,7 @@ function initializeMap() {
     
     // Initialize zoom behavior
     zoom = d3.zoom()
-        .scaleExtent([1, 8])
+        .scaleExtent([0.5, 30])
         .on("zoom", zoomed);
     
     // Initialize SVG elements
@@ -2303,7 +2321,6 @@ function unselectAllBasins() {
 
 
 
-// Add sidebar toggle functionality
 document.getElementById('toggle-info').addEventListener('click', function() {
     const sidebar = document.getElementById('info-sidebar');
     sidebar.classList.toggle('active');
@@ -2320,11 +2337,10 @@ document.getElementById('close-sidebar').addEventListener('click', function() {
 function isValidBasin(feature) {
     if (!feature || !feature.properties) return false;
     
-    // For Spain, we want to filter out specific basins
+    // For Spain, we only want to filter specific problematic basins
     if (currentCountry === 'esp') {
-        // Filter out all basins starting with 231
-        return !feature.properties.PFAF_ID.startsWith('231') &&
-               feature.properties.PFAF_ID !== '216042';
+        return f.properties.PFAF_ID !== '231110' && 
+               f.properties.PFAF_ID !== '216042';
     }
     
     return true;
